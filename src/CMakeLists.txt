@@ -28,3 +28,7 @@ add_custom_exe(sample_02
 add_custom_exe(sample_03
   sample_03.cpp
 )
+
+add_custom_exe(sample_04
+  sample_04.cpp
+)
