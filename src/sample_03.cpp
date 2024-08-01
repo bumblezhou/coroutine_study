@@ -23,18 +23,17 @@ struct Generator
 
     Generator get_return_object()
     {
-      std::cout << "Generator -> promise_type -> get_return_object() ... " << "\n";
+      std::cout << "Generator -> promise_type -> get_return_object(value:" << value_ << ")" << "\n";
       return Generator(handle_type::from_promise(*this));
     }
     std::suspend_always initial_suspend() { return {}; }
     std::suspend_always final_suspend() noexcept { return {}; }
-    void unhandled_exception() { exception_ = std::current_exception(); } // saving
-                                                                          // exception
+    void unhandled_exception() { exception_ = std::current_exception(); } // saving exception
 
     template<std::convertible_to<T> From> // C++20 concept
     std::suspend_always yield_value(From&& from)
     {
-      std::cout << "Generator -> promise_type -> yield_value(value:" << value_ << ") ... " << "\n";
+      std::cout << "Generator -> promise_type -> yield_value(value:" << value_ << ", from: " << std::forward<From>(from) << ")" << "\n";
       value_ = std::forward<From>(from); // caching the result in promise
       return {};
     }
@@ -44,29 +43,30 @@ struct Generator
   handle_type h_;
 
   Generator(handle_type h) : h_(h) {
-    std::cout << "Generator() constructor" << "\n";
+    std::cout << "Generator constructor" << "\n";
   }
   ~Generator() { 
     h_.destroy();
-    std::cout << "~Generator() destructor" << "\n";
+    std::cout << "Generator destructor" << "\n";
   }
   explicit operator bool()
   {
-    std::cout << "Generator -> explicit operator bool() ... " << "\n";
+    std::cout << "Generator -> Before explicit operator bool() then fill() ==> value: " << h_.promise().value_ << ", " << "full_: " << full_ << " ... " << "\n";
     fill(); // The only way to reliably find out whether or not we finished coroutine,
             // whether or not there is going to be a next value generated (co_yield)
             // in coroutine via C++ getter (operator () below) is to execute/resume
             // coroutine until the next co_yield point (or let it fall off end).
             // Then we store/cache result in promise to allow getter (operator() below
             // to grab it without executing coroutine).
+    std::cout << "Generator -> After explicit operator bool() and fill()   ==> value: " << h_.promise().value_ << ", " << "full_: " << full_ << " ... " << "\n";
     return !h_.done();
   }
   T operator()()
   {
-    std::cout << "Generator -> T operator()() -> fill() || full_ = false ... " << "\n";
+    std::cout << "Generator -> Before T operator()() then fill() ==> full_ = false || value: " << h_.promise().value_ << "\n";
     fill();
-    full_ = false; // we are going to move out previously cached
-                    // result to make promise empty again
+    full_ = false; // we are going to move out previously cached result to make promise empty again
+    std::cout << "Generator -> After operator()() and fill()     ==> full_ = false || value: " << h_.promise().value_ << "\n";
     return std::move(h_.promise().value_);
   }
  
@@ -75,17 +75,18 @@ private:
 
   void fill()
   {
-    std::cout << "Generator -> fill() ... " << "\n";
+    std::cout << "Generator -> Before fill() then h_() then full_ = true ==> value: " << h_.promise().value_ << "\n";
     if (!full_)
     {
       h_();
       if (h_.promise().exception_)
-          std::rethrow_exception(h_.promise().exception_);
+      {
+        std::rethrow_exception(h_.promise().exception_);
+      }
       // propagate coroutine exception in called context
-
-      std::cout << "Generator -> fill() -> h_() || full_ = true ... " << "\n";
       full_ = true;
     }
+    std::cout << "Generator -> After fill() and h_() and full_ = true    ==> value: " << h_.promise().value_ << "\n";
   }
 };
  
@@ -98,11 +99,15 @@ fibonacci_sequence(unsigned n)
   if (n > 94)
     throw std::runtime_error("Too big Fibonacci sequence. Elements would overflow.");
 
+  std::cout << "fibonacci_sequence(" << n << ") -> co_yield 0 " << "\n";
   co_yield 0;
 
-  if (n == 1)
+  if (n == 1) {
+    std::cout << "fibonacci_sequence(" << n << ") -> co_return " << "\n";
     co_return;
+  }
 
+  std::cout << "fibonacci_sequence(" << n << ") -> co_yield 1 " << "\n";
   co_yield 1;
 
   if (n == 2)
@@ -111,10 +116,11 @@ fibonacci_sequence(unsigned n)
   std::uint64_t a = 0;
   std::uint64_t b = 1;
 
+  std::cout << "fibonacci_sequence(" << n << ") -> for loop ... " << "\n";
   for (unsigned i = 2; i < n; ++i)
   {
     std::uint64_t s = a + b;
-    std::cout << "fibonacci_sequence() -> for -> co_yield(s:" << s << ", a: " << a << ", b: " << b << ") ... " << "\n";
+    std::cout << "fibonacci_sequence(" << n << ") -> for -> co_yield(s:" << s << ", a: " << a << ", b: " << b << ") ... " << "\n";
     co_yield s;
     a = b;
     b = s;
@@ -126,11 +132,12 @@ int main()
   std::cout << "main start ..." << "\n";
   try
   {
-    std::cout << "fibonacci_sequence(10) ... " << "\n";
+    std::cout << "main call fibonacci_sequence(10) ... " << "\n";
     auto gen = fibonacci_sequence(10); // max 94 before uint64_t overflows
 
+    std::cout << "main for loop ..." << "\n";
     for (int j = 0; gen; ++j) {
-      std::cout << "fib(" << j << ")=" << gen() << '\n';
+      std::cout << "main " << j << " gen() " << gen() << '\n';
     }
   }
   catch (const std::exception& ex)
