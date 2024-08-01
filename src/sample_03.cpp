@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <memory>
  
 template<typename T>
 struct Generator
@@ -97,7 +100,7 @@ private:
 };
  
 Generator<std::uint64_t>
-fibonacci_sequence(unsigned n)
+fibonacci_sequence(uint32_t n)
 {
   if (n == 0)
     co_return;
@@ -123,7 +126,7 @@ fibonacci_sequence(unsigned n)
   std::uint64_t b = 1;
 
   std::cout << "fibonacci_sequence(" << n << ") -> for loop -> a: " << a << ", b: " << b << " ... " << "\n";
-  for (unsigned i = 2; i < n; ++i)
+  for (uint32_t i = 2; i < n; ++i)
   {
     std::uint64_t s = a + b;
     std::cout << "fibonacci_sequence(" << n << ") -> for(i:" << i << ") -> a: " << a << ", b: " << b << " => co_yield() s:" << s << "\n";
@@ -133,18 +136,58 @@ fibonacci_sequence(unsigned n)
   }
 }
  
+Generator<double_t>
+newton_method_for_pi(double_t initial_guess) {
+  double_t x0 = 3.0; // Initial guess
+  double_t epsilon = 1e-8; // Convergence criteria
+  double_t x = x0;
+  while (true) {
+    double_t fx = std::sin(x);
+    double_t fpx = std::cos(x);
+    double_t x1 = x - (fx / fpx);
+
+    if (std::abs(x1 - x) < epsilon) {
+      // return x1;
+      std::cout << "############co_yield " << std::setprecision(15) << x1 << ";#############\n";
+      co_yield x1;
+      std::cout << "break; \n";
+      break;
+    }
+
+    x = x1;
+    std::cout << "############co_yield " << std::setprecision(15) << x << ";#############\n";
+    co_yield x;
+  }
+}
+
+double_t machin_like_formula_pi() {
+    double_t pi = 4 * (4 * std::atan(1.0 / 5.0) - std::atan(1.0 / 239.0));
+    return pi;
+}
+
 int main()
 {
   std::cout << "main start ..." << "\n";
   try
   {
     std::cout << "main call fibonacci_sequence(10) ... " << "\n";
-    auto gen = fibonacci_sequence(10); // max 94 before uint64_t overflows
-
+    auto fib_gen = fibonacci_sequence(10); // max 94 before uint64_t overflows
     std::cout << "main for loop ..." << "\n";
-    for (int j = 0; gen; ++j) {
-      std::cout << "main for(" << j << ") gen() => " << gen() << '\n';
+    for (int j = 0; fib_gen; ++j) {
+      std::cout << "main for(" << j << ") fib_gen() => " << fib_gen() << '\n';
     }
+
+    std::cout << "\n\n";
+    std::cout << "main call newton_method_for_pi(3.0) ... " << "\n";
+    auto pi_gen = newton_method_for_pi(3.0);
+    std::cout << "main for loop ..." << "\n";
+    for (int j = 0; pi_gen; ++j) {
+      std::cout << "main for(" << j << ") pi_gen() => " << pi_gen() << '\n';
+    }
+
+    std::cout << "\n\n";
+    double_t pi_02 = machin_like_formula_pi();
+    std::cout << "machin_like_formula_pi: " << std::setprecision(12) << pi_02 << std::endl;
   }
   catch (const std::exception& ex)
   {
