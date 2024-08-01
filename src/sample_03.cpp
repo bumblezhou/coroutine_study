@@ -51,22 +51,26 @@ struct Generator
   }
   explicit operator bool()
   {
-    std::cout << "Generator -> Before explicit operator bool() then fill() ==> value: " << h_.promise().value_ << ", " << "full_: " << full_ << " ... " << "\n";
+    std::cout << "Generator -> Before explicit operator bool() ==> value: " << h_.promise().value_ << ", " << "full_: " << full_ << " ... " << "\n";
+    std::cout << "fill() \n";
     fill(); // The only way to reliably find out whether or not we finished coroutine,
             // whether or not there is going to be a next value generated (co_yield)
             // in coroutine via C++ getter (operator () below) is to execute/resume
             // coroutine until the next co_yield point (or let it fall off end).
             // Then we store/cache result in promise to allow getter (operator() below
             // to grab it without executing coroutine).
-    std::cout << "Generator -> After explicit operator bool() and fill()   ==> value: " << h_.promise().value_ << ", " << "full_: " << full_ << " ... " << "\n";
+    std::cout << "Generator -> After  explicit operator bool() ==> value: " << h_.promise().value_ << ", " << "full_: " << full_ << " ... " << "\n";
     return !h_.done();
   }
   T operator()()
   {
-    std::cout << "Generator -> Before T operator()() then fill() ==> full_ = false || value: " << h_.promise().value_ << "\n";
+    std::cout << "Generator -> Before T operator()() ==> full: " << full_ << ", value: " << h_.promise().value_ << "\n";
+    std::cout << "fill() \n";
     fill();
+    std::cout << "full_ = false \n";
     full_ = false; // we are going to move out previously cached result to make promise empty again
-    std::cout << "Generator -> After operator()() and fill()     ==> full_ = false || value: " << h_.promise().value_ << "\n";
+    std::cout << "return std::move(h_.promise().value_) \n";
+    std::cout << "Generator -> After  T operator()() ==> full: " << full_ << ", value: " << h_.promise().value_ << "\n";
     return std::move(h_.promise().value_);
   }
  
@@ -75,18 +79,20 @@ private:
 
   void fill()
   {
-    std::cout << "Generator -> Before fill() then h_() then full_ = true ==> value: " << h_.promise().value_ << "\n";
+    std::cout << "Generator -> Before fill() ==> full: " << full_ << ", value: " << h_.promise().value_ << "\n";
     if (!full_)
     {
+      std::cout << "h_() \n";
       h_();
       if (h_.promise().exception_)
       {
         std::rethrow_exception(h_.promise().exception_);
       }
       // propagate coroutine exception in called context
+      std::cout << "full_ = true \n";
       full_ = true;
     }
-    std::cout << "Generator -> After fill() and h_() and full_ = true    ==> value: " << h_.promise().value_ << "\n";
+    std::cout << "Generator -> After  fill() ==> full: " << full_ << ", value: " << h_.promise().value_ << "\n";
   }
 };
  
@@ -116,11 +122,11 @@ fibonacci_sequence(unsigned n)
   std::uint64_t a = 0;
   std::uint64_t b = 1;
 
-  std::cout << "fibonacci_sequence(" << n << ") -> for loop ... " << "\n";
+  std::cout << "fibonacci_sequence(" << n << ") -> for loop -> a: " << a << ", b: " << b << " ... " << "\n";
   for (unsigned i = 2; i < n; ++i)
   {
     std::uint64_t s = a + b;
-    std::cout << "fibonacci_sequence(" << n << ") -> for -> co_yield(s:" << s << ", a: " << a << ", b: " << b << ") ... " << "\n";
+    std::cout << "fibonacci_sequence(" << n << ") -> for(i:" << i << ") -> a: " << a << ", b: " << b << " => co_yield() s:" << s << "\n";
     co_yield s;
     a = b;
     b = s;
@@ -137,7 +143,7 @@ int main()
 
     std::cout << "main for loop ..." << "\n";
     for (int j = 0; gen; ++j) {
-      std::cout << "main " << j << " gen() " << gen() << '\n';
+      std::cout << "main for(" << j << ") gen() => " << gen() << '\n';
     }
   }
   catch (const std::exception& ex)
