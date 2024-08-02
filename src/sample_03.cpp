@@ -200,8 +200,11 @@ newton_method_for_pi(double_t initial_guess) {
 }
 
 double_t machin_like_formula_pi() {
-    double_t pi = 4 * (4 * std::atan(1.0 / 5.0) - std::atan(1.0 / 239.0));
-    return pi;
+  // double_t pi = 4 * (1 * std::atan(1.0 / 2.0) + std::atan(1.0 / 3.0));    // Euler's 1737
+  // double_t pi = 4 * (2 * std::atan(1.0 / 2.0) - std::atan(1.0 / 7.0));    // Hermann's 1706
+  // double_t pi = 4 * (2 * std::atan(1.0 / 3.0) + std::atan(1.0 / 7.0));    // Hutton's or Vega's
+  double_t pi = 4 * (4 * std::atan(1.0 / 5.0) - std::atan(1.0 / 239.0));  // Machin's 1706
+  return pi;
 }
 
 int main()
@@ -226,7 +229,7 @@ int main()
 
     std::cout << "\n\n";
     double_t pi_02 = machin_like_formula_pi();
-    std::cout << "machin_like_formula_pi: " << std::setprecision(12) << pi_02 << std::endl;
+    std::cout << "machin_like_formula_pi: " << std::setprecision(14) << pi_02 << std::endl;
   }
   catch (const std::exception& ex)
   {
